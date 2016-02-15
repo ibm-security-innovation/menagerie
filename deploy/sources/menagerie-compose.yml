@@ -1,0 +1,30 @@
+frontend:
+  container_name: menagerie_frontend
+  # build: .
+  image: {{regserver}}/menagerie
+  command: ./bin/frontend -cfg /data/keys/frontend.json -engine-cfg /data/keys/engines.json
+  container_name: menagerie_frontend
+  user: "{{uid}}"
+  ports:
+   - "8080:8080"
+  volumes:
+   - /data/menagerie/volumes/frontend:/data
+  external_links:
+   - menagerie_mysql:menagerie_mysql
+   - menagerie_rabbitmq:menagerie_rabbitmq
+  read_only: true
+menage:
+  container_name: menagerie_menage
+  # build: .
+  image: {{regserver}}/menagerie
+  command: ./bin/menage -cfg /data/keys/menage.json -engine-cfg /data/keys/engines.json
+  container_name: menagerie_menage
+  volumes: 
+   - /var/run/docker.sock:/var/run/docker.sock
+   - {{home}}/.docker:/root/.docker
+   - /data/menagerie/volumes/menage:/data
+  links:
+   - frontend:menagerie_frontend
+  external_links:
+   - menagerie_rabbitmq:menagerie_rabbitmq
+  read_only: true

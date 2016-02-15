@@ -1,0 +1,13 @@
+{"engines": [
+  { "name": "testengine",
+    "workers": 1,
+    "image": "{{regserver}}/menagerie",
+    "cmd": "md5sum /var/data/sample.data | cut -f 1 -d' ' > /var/data/result",
+    "mountpoint": "/var/data",
+    "runflags": "--read-only",
+    "sizelimit": 1000000000,
+    "inputfilename": "sample.data",
+    "user": {{uid}},
+    "timeout": 10
+  }
+]}

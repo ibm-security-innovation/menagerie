@@ -1,0 +1,18 @@
+CREATE SCHEMA IF NOT EXISTS menagerie  DEFAULT CHARACTER SET utf8;
+
+USE menagerie;
+
+-- CREATE USER 'menagerie'@'%' IDENTIFIED BY 'menagerie';
+-- GRANT ALL PRIVILEGES ON *.* TO 'menagerie'@'%' WITH GRANT OPTION;
+
+CREATE TABLE IF NOT EXISTS jobs (
+    id INT NOT NULL AUTO_INCREMENT,
+    engine VARCHAR(32) NOT NULL,
+    status ENUM ('RECEIVED', 'RUNNING', 'FAIL', 'SUCCESS') NOT NULL DEFAULT 'RECEIVED',
+    created DATETIME NULL,
+    started DATETIME NULL,
+    finished DATETIME NULL,
+    error VARCHAR(128) NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB;
+

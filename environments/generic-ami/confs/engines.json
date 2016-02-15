@@ -1,0 +1,14 @@
+{"engines": [
+  { "name": "apktool",
+    "workers": 2,
+    "image": "{{regserver}}/apktool:stable",
+    "runflags": "--read-only",
+    "cmd": "/engine/run.sh",
+    "mountpoint": "/var/data",
+    "sizelimit": 50000000,
+    "inputfilename": "sample.apk",
+    "user": {{uid}},
+    "timeout": 240
+  }
+]}
+

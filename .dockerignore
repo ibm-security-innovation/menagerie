@@ -1,0 +1,8 @@
+.git
+.vagrant
+environments/
+pkg/
+src/
+registry/
+subprojects/
+deploy/

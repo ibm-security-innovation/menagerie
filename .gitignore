@@ -1,0 +1,8 @@
+.vagrant
+bin/
+pkg/
+.DS_Store
+subprojects/
+.*.swp
+src/github.com/
+scan-*ml

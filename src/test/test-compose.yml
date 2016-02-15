@@ -1,0 +1,44 @@
+frontend:
+  container_name: test_menagerie_frontend
+  # build: .
+  image: {{regserver}}/menagerie
+  command: ./bin/frontend -cfg /data/keys/frontend.json -engine-cfg /data/keys/engines.json
+  container_name: test_menagerie_frontend
+  user: "{{uid}}"
+  ports:
+   - "9007:8080"
+  volumes:
+   - /tmp/menagerie/test/volumes/frontend:/data
+  links:
+   - mysql:test_menagerie_mysql
+   - rabbitmq:test_menagerie_rabbitmq
+menage:
+  container_name: test_menagerie_menage
+  # build: .
+  image: {{regserver}}/menagerie
+  command: ./bin/menage -cfg /data/keys/menage.json -engine-cfg /data/keys/engines.json
+  container_name: test_menagerie_menage
+  volumes: 
+   - /var/run/docker.sock:/var/run/docker.sock
+   - {{home}}/.docker:/root/.docker
+   - /tmp/menagerie/test/volumes/menage:/data
+  links:
+   - frontend:test_menagerie_frontend
+   - rabbitmq:test_menagerie_rabbitmq
+mysql:
+  container_name: test_menagerie_mysql
+  image: mysql
+  mem_limit: 1g
+  environment:
+    MYSQL_ROOT_PASSWORD: menagerieroot
+    MYSQL_USER: menagerie
+    MYSQL_PASSWORD: menagerie
+    MYSQL_DATABASE: menagerie
+rabbitmq:
+  container_name: test_menagerie_rabbitmq
+  image: rabbitmq:3-management
+  environment:
+    HOSTNAME: "menagerie_rabbitmq"
+    RABBITMQ_NODENAME: "menagerie_rabbitmq"
+    RABBITMQ_DEFAULT_USER: "menagerie"
+    RABBITMQ_DEFAULT_PASS: "menagerie"

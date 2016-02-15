@@ -1,0 +1,3 @@
+* * * * * root /bin/bash /data/menagerie/scripts/job_mule_add.sh -v menage {{muleserver}}
+* * * * * root /bin/bash /data/menagerie/scripts/job_mule_add.sh -v frontend {{muleserver}}
+0 * * * * root /bin/bash /data/menagerie/scripts/cleanup.sh

@@ -1,0 +1,19 @@
+{
+	"ImportPath": "_/home/vagrant/menagerie/src",
+	"GoVersion": "go1.5.1",
+	"Packages": [
+		"github.com/go-sql-driver/mysql/"
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.2-125-gd512f20",
+			"Rev": "d512f204a577a4ab037a1816604c48c9c13210be"
+		},
+		{
+			"ImportPath": "github.com/streadway/amqp",
+			"Comment": "AMQP 0.9.1",
+			"Rev": "b4f3ceab0337f013208d31348b578d83c0064744"
+		}
+	]
+}

@@ -1,0 +1,29 @@
+{ "flags" : {
+  "all": {
+    "mule_dir":  "/data/mule/incoming",
+    "mule_prefix": "menagerie.vagrant",
+    "log_dir":  "/data/log",
+    "frontend": "menagerie_frontend:8080",
+    "rabbitmq": "menagerie_rabbitmq:5672",
+    "mq_user": "menagerie",
+    "mq_pass": "menagerie"
+  },
+  "worker": {
+    "joblimit": "100",
+    "jobsdir": "/data/jobs",
+    "jobsonhost": "/data/menagerie/volumes/menage/jobs"
+  },
+  "frontend": {
+    "store": "/data/store",
+    "listen": ":8080",
+    "mysql": "menagerie_mysql:3306",
+    "mysql_user": "menagerie",
+    "mysql_pass": "menagerie",
+    "mysql_database": "menagerie"
+  },
+  "menage": {
+    "workerexe": "./bin/worker"
+  }
+}}
+
+

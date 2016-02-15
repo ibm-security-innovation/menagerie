@@ -1,0 +1,31 @@
+{
+    "Queues": [
+        {
+            "Name": "appscan",
+            "Urgent": 0,
+            "Ready": 0,
+            "Reserved": 0,
+            "Delayed": 0,
+            "Buried": 0,
+            "Total": 0
+        },
+        {
+            "Name": "titanium core",
+            "Urgent": 0,
+            "Ready": 0,
+            "Reserved": 0,
+            "Delayed": 0,
+            "Buried": 0,
+            "Total": 0
+        },
+        {
+            "Name": "eaos",
+            "Urgent": 0,
+            "Ready": 0,
+            "Reserved": 0,
+            "Delayed": 0,
+            "Buried": 0,
+            "Total": 0
+        }
+    ]
+}
