@@ -85,6 +85,7 @@ config](../../blob/master/environments/generic-ami/confs/engines.json)):
     sizelimit:  # limit on upload size, bytes
     inputfilename: # the script should expect a single file as input, by this name
     user:       # UID to execute
+    runflags:   # additional run flag string
     timeout:    # on job execution
 ```
 
