@@ -77,16 +77,16 @@ Once the engine is built and pushed to the private registry, you need to:
 config](../../blob/master/environments/generic-ami/confs/engines.json)):
 
 ```
-  - name:       # engine queue name
-    workers:    # how many workers listening 
-    image:      # regserver:port/new-engine-name:tag
-    cmd:        # engine activation command inside the container
-    mountpoint: # where the engine expects the input
-    sizelimit:  # limit on upload size, bytes
-    inputfilename: # the script should expect a single file as input, by this name
-    user:       # UID to execute
-    runflags:   # additional run flag string
-    timeout:    # on job execution
+  - name:           # engine queue name
+    workers:        # how many workers listening 
+    image:          # regserver:port/new-engine-name:tag
+    cmd:            # engine activation command inside the container
+    mountpoint:     # where the engine expects the input
+    sizelimit:      # limit on upload size, bytes
+    inputfilename:  # the script should expect a single file as input, by this name
+    user:           # UID to execute
+    runflags:       # additional run flag string, embedded as-is into 'docker run' cmd
+    timeout:        # on job execution
 ```
 
 * Pull the engine container in the deployed machine
