@@ -1,21 +1,20 @@
 { "flags" : {
   "all": {
     "mule_dir":  "/data/mule_incoming",
-    "log_dir":  "/data/log",
-    "frontend": "test_menagerie_frontend:8080",
-    "rabbitmq": "test_menagerie_rabbitmq:5672",
+    "logtostderr":  "true",
+    "frontend": "frontend:8080",
+    "rabbitmq": "rabbitmq:5672",
     "mq_user": "menagerie",
     "mq_pass": "menagerie"
   },
   "worker": {
     "joblimit": "100",
-    "jobsdir": "/data/jobs",
-    "jobsonhost": "/tmp/menagerie/test/volumes/menage/jobs"
+    "jobsdir": "/data/jobs"
   },
   "frontend": {
     "store": "/data/store",
     "listen": ":8080",
-    "mysql": "test_menagerie_mysql:3306",
+    "mysql": "mysql:3306",
     "mysql_user": "menagerie",
     "mysql_pass": "menagerie",
     "mysql_database": "menagerie"

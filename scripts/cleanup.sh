@@ -1,4 +1,4 @@
-find /data/menagerie/volumes/frontend/log -mtime +10 -exec rm {} \;
+#!/bin/bash
 # 
 #  Copyright 2015 IBM Corp. All Rights Reserved.
 # 
@@ -14,9 +14,10 @@ find /data/menagerie/volumes/frontend/log -mtime +10 -exec rm {} \;
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # 
-find /data/menagerie/volumes/frontend/mule -mtime +10 -exec rm {} \;
-find /data/menagerie/volumes/menage/log -mtime +10 -exec rm {} \;
-find /data/menagerie/volumes/menage/mule -mtime +10 -exec rm {} \;
-find /data/menagerie/volumes/menage/jobs -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -fr {} \;
-find /data/menagerie/volumes/frontend/store -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -fr {} \;
+echo "Start cleanup processing"
+find /data/mule  -mtime +10 -exec rm {} \;
+find /data/log   -mtime +10 -exec rm {} \;
+find /data/jobs  -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -fr {} \;
+find /data/store -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -fr {} \;
+echo "End cleanup processing"
 

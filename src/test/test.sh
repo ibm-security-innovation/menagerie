@@ -48,7 +48,8 @@ if [ $helpmsg ]; then
     echo "  -h,--help          Display this message"
     exit
 fi
-uid=`id -u $user`
+# TODO run with specific uid
+uid=0
 targetdir=/tmp/menagerie/test
 volumedir=$targetdir/volumes
 basedir=../..
@@ -86,18 +87,19 @@ mkdir -p $volumedir/frontend/store
 create_volume menage
 
 # copy files and move to location
-cp $basedir/src/test/test-compose.yml $volumedir/test/
+cp $basedir/deploy/sources/menagerie-compose.yml $volumedir/test/test-compose.yml
 cp $basedir/src/test/confs/default.json $volumedir/frontend/keys/frontend.json
 cp $basedir/src/test/confs/engines.json $volumedir/frontend/keys/engines.json
 cp $basedir/src/test/confs/default.json $volumedir/menage/keys/menage.json
 cp $basedir/src/test/confs/engines.json $volumedir/menage/keys/engines.json
-cp $basedir/deploy/sources/log.sh $volumedir/menage/
+cp -r ~/.docker $volumedir/menage/keys/
 cp -R $basedir/deploy/sources/sql $volumedir/mysql/
 
 # run parameters through template files
 template $volumedir/test/test-compose.yml 'home' $HOME
 template $volumedir/test/test-compose.yml 'regserver' $reg_server
 template $volumedir/test/test-compose.yml 'uid' $uid
+template $volumedir/test/test-compose.yml 'port' 8080
 template $volumedir/menage/keys/engines.json 'regserver' $reg_server
 template $volumedir/menage/keys/engines.json 'uid' $uid
 template $volumedir/frontend/keys/engines.json 'regserver' $reg_server
@@ -107,10 +109,10 @@ template $volumedir/frontend/keys/engines.json 'uid' $uid
 chown -R $user:$user $volumedir/frontend
 chmod -R g+s $volumedir/frontend
 
-# hide the rest
-chmod -R 700 $volumedir/menage
-chmod -R 700 $volumedir/mysql
-chmod -R 700 $volumedir/rabbitmq
+# initialize containers
+$docker_compose -f $volumedir/test/test-compose.yml create
+tar c -C $volumedir/frontend . | $docker run --rm -v test_frontend:/data -i busybox tar x -C /data
+tar c -C $volumedir/menage . | $docker run --rm -v test_menage:/data -i busybox tar x -C /data
 
 # start menagerie
 $docker_compose -f $volumedir/test/test-compose.yml up -d
@@ -120,7 +122,7 @@ stat="1"
 for i in {1..30}; do 
   sleep 2
   echo $(date +%T) "Waiting to configure database..."
-  $docker exec -i test_menagerie_mysql mysql -umenagerie -pmenagerie < $basedir/deploy/sources/sql/schema.sql > /dev/null 2>&1
+  $docker exec -i test_mysql_1 mysql -umenagerie -pmenagerie < $basedir/deploy/sources/sql/schema.sql > /dev/null 2>&1
   stat="$?"
   if [ $stat -eq "0" ]; then
     break
@@ -130,6 +132,7 @@ done
 if [ $stat -eq "0" ]; then
   echo "Connected to database successfully"
   export GOPATH=$(readlink -m $basedir/../src)  # TODO - make generic
+  sleep 3
   go test -tags integration $basedir/src/test
   exitcode="$?"
 else
@@ -138,9 +141,8 @@ fi
 
 if [ -z $nocleanup ]; then
   docker-compose -f $volumedir/test/test-compose.yml stop
-  docker run --rm -v /tmp/menagerie/test/volumes/menage:/data $reg_server/menagerie rm -rf /data/jobs
   docker-compose -f $volumedir/test/test-compose.yml rm -f -v
-  rm -rf $targetdir
+  sudo rm -rf $targetdir
 fi
 
 exit $exitcode

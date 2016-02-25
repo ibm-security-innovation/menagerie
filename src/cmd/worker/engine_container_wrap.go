@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -33,7 +32,6 @@ import (
 
 var rand1 = rand.New(rand.NewSource(time.Now().UnixNano()))
 var jobsdir = flag.String("jobsdir", "", "jobs dir in container")
-var jobsHostVolumeMount = flag.String("jobsonhost", "", "the actual jobs dir path on the host")
 
 type JobContext struct {
 	dirname       string
@@ -45,32 +43,6 @@ type EngineContainerWrap struct {
 	index    int
 	engineId string
 	jobc     JobContext
-}
-
-func copyFileContents(src, dst string) (err error) {
-	in, err := os.Open(src)
-	if err != nil {
-		glog.Errorln("could not open file for copint", src)
-		return
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		glog.Errorln("could not open file for coping dst ", dst)
-		return
-	}
-	defer func() {
-		cerr := out.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
-	if _, err = io.Copy(out, in); err != nil {
-		glog.Errorln("could not open copy file ", dst)
-		return
-	}
-	err = out.Sync()
-	return
 }
 
 func logName(tag string) string {
@@ -109,17 +81,13 @@ func (ecwrap *EngineContainerWrap) OpenNewTask() (string, error) {
 		return "", errors.New("error creating work dir")
 	}
 
-	docker_create_cmd := exec.Command("docker", "create",
-		"-v", path.Join(*jobsHostVolumeMount, ecwrap.jobc.containerName)+":"+ecwrap.MountPoint,
-		"-u", strconv.Itoa(ecwrap.User),
-		"--name", ecwrap.jobc.containerName,
-		ecwrap.RunFlags,
-		ecwrap.Image,
-		"/bin/bash",
-		"-c", ecwrap.Cmd)
+	docker_create_tokens := append(
+		append([]string{"create", "-v", name + ":" + ecwrap.MountPoint, "-u", strconv.Itoa(ecwrap.User), "--name", ecwrap.jobc.containerName}, ecwrap.RunFlags...),
+		[]string{ecwrap.Image, "/bin/bash", "-c", ecwrap.Cmd}...)
+	docker_create_cmd := exec.Command("docker", docker_create_tokens...)
 	docker_create_cmd.Stdout = os.Stdout
 	docker_create_cmd.Stderr = os.Stderr
-	glog.Infoln("volumne create Command", docker_create_cmd.Args)
+	glog.Infoln("volume create Command", docker_create_cmd.Args)
 	err := docker_create_cmd.Run()
 	if err != nil {
 		return "", err
@@ -134,26 +102,55 @@ func (ecwrap *EngineContainerWrap) Stop() int {
 	docker_kill.Run()
 	return 1
 }
+
 func (ecwrap *EngineContainerWrap) EngineId() string {
 	return ecwrap.engineId
 }
+
 func (ecwrap *EngineContainerWrap) Cleanup() {
-	docker_cmd := exec.Command("docker", "rm", "-v", ecwrap.jobc.containerName)
-	docker_cmd.Run()
+	rm_container_cmd := exec.Command("docker", "rm", "-v", ecwrap.jobc.containerName)
+	glog.Infoln("rm container Command", rm_container_cmd.Args)
+	rm_container_cmd.Run()
+	rm_volume_cmd := exec.Command("docker", "volume", "rm", ecwrap.jobc.containerName)
+	glog.Infoln("rm volume Command", rm_volume_cmd.Args)
+	rm_volume_cmd.Run()
 	glog.Infoln("Cleanup deletes", ecwrap.jobc.dirname, "for", ecwrap.engineId)
 	os.RemoveAll(ecwrap.jobc.dirname)
 }
+
+// TODO: docker cp doesn't work correctly with user namespaces
+// when it does then use it
+func cpTo(src *os.File, destVol, destFile string) error {
+	cmd := exec.Command(
+		"docker", "run", "--rm", "-i", "-v", destVol+":/data",
+		"busybox", "/bin/sh", "-c", "cat - > /data/"+destFile)
+	cmd.Stdin = src
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func cpFrom(vol, file string, dest *os.File) error {
+	cmd := exec.Command(
+		"docker", "run", "--rm", "-v", vol+":/data",
+		"busybox", "cat", "/data/"+file)
+	cmd.Stdout = dest
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// TODO better errors
 func (ecwrap *EngineContainerWrap) Run() (string, error) {
-	// Make sure we chown -R the jobs dir before we go deeper, and also set the
-	// gid bit
-	if err := exec.Command("chown", "-R", fmt.Sprintf("%d:%d", ecwrap.User, ecwrap.User), ecwrap.jobc.dirname).Run(); err != nil {
-		glog.Infoln("could not chown dir worker for engine")
+	inputFile, err := os.Open(path.Join(ecwrap.jobc.dirname, ecwrap.InputFileName))
+	if err != nil {
 		return "", err
 	}
-	if err := exec.Command("chmod", "-R", "g+s", ecwrap.jobc.dirname).Run(); err != nil {
-		glog.Infoln("could not chmod g+s dir worker for engine")
+	defer inputFile.Close()
+	err = cpTo(inputFile,
+		ecwrap.jobc.containerName, ecwrap.InputFileName)
+	if err != nil {
+		return "", err
 	}
-
 	docker_cmd := exec.Command("docker", "start", "-a", ecwrap.jobc.containerName)
 	// TODO log stdout/stderr
 	containerLogName := logName(ecwrap.jobc.containerName)
@@ -172,10 +169,21 @@ func (ecwrap *EngineContainerWrap) Run() (string, error) {
 	docker_cmd.Stdout = contOut
 	docker_cmd.Stderr = contOut
 	glog.Infoln("create Command", docker_cmd.Args)
-	err := docker_cmd.Run()
+	err = docker_cmd.Run()
 	if err != nil {
 		glog.Errorln("error starting container ", err)
+		return "", err
 	}
 	glog.Infoln("docker start finish ", ecwrap.engineId)
+
+	resultFile, err := os.Create(path.Join(ecwrap.jobc.dirname, "result"))
+	if err != nil {
+		return "", err
+	}
+	defer resultFile.Close()
+	err = cpFrom(ecwrap.jobc.containerName, "result", resultFile)
+	if err != nil {
+		glog.Error("Error copying result from container")
+	}
 	return path.Join(ecwrap.jobc.dirname, "result"), nil
 }

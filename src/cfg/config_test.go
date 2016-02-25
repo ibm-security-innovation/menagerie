@@ -49,6 +49,10 @@ func Test(t *testing.T) {
     "cmd": "/engine/run.sh",
     "mountpoint": "/var/data",
     "sizelimit": 1000000,
+		"runflags": [
+			"--security-opt",
+			"apparmor:pamcheck"
+		],
     "inputfilename": "sample.pcap",
     "timeout": 120,
     "user": 0 }
@@ -59,7 +63,7 @@ func Test(t *testing.T) {
 	fmt.Printf("%s\n", data)
 	err := json.Unmarshal([]byte(data), &c)
 	fmt.Printf("%+v\n", c)
-	if err != nil || c.Engines[0].Name != "eaos32" || c.Engines[2].Workers != 4 {
+	if err != nil || c.Engines[0].Name != "eaos32" || c.Engines[2].Workers != 4 || c.Engines[2].RunFlags[1] != "apparmor:pamcheck" {
 		t.Error("Error unmarshalling json:", err)
 	}
 }

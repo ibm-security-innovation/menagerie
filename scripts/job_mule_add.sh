@@ -16,7 +16,7 @@
 # 
 
 function log() {
-    echo "`date --iso-8601=seconds` [$volname] ($$) $*" >> $logfile
+    echo "($$) $*"
 }
 
 
@@ -32,9 +32,6 @@ do
         u)
             update_url=$OPTARG
             ;;
-        v)
-            volname=$OPTARG
-            ;;
         h)
             usage
             exit 1
@@ -45,21 +42,18 @@ do
             ;;
     esac
 done
-basedir=/data/menagerie
-scriptsdir=$basedir/scripts
 
-shareddir=$basedir/volumes/$volname
-logfile=$shareddir/log/mule_add.log
-incomingdir=$shareddir/mule/incoming
-faileddir=$shareddir/mule/failed
-processeddir=$shareddir/mule/processed
+basedir=/data
+logfile=$basedir/log/mule_add.log
+incomingdir=$basedir/mule/incoming
+faileddir=$basedir/mule/failed
+processeddir=$basedir/mule/processed
 now=`date +'%Y%m%d-%H%M%S'`
 today=`date +'%Y%m%d'`
 dayhourslash=`date +'%Y/%m/%d/%H'`
 
 log "Start"
 if [ -z ${update_url+x} ]; then log "url is not set"; else log "using url: $update_url"; fi
-log "using volname: $volname"
 log "incoming dir: $incomingdir"
 
 # first collect all the relevant files
@@ -70,7 +64,7 @@ find $incomingdir -maxdepth 1 -type f -name "*.mule" | xargs -r mv -t $in_work
 # check if the work dir is empty by trying to delete it
 rmdir $in_work &> /dev/null
 if [[ $? == 0 ]]; then
-  log "no mule files"
+  log "Done, no mule files"
   exit 0;
 fi
 
@@ -100,7 +94,7 @@ if [ -z ${dryrun+x} ]; then
         mv $combined $faileddir/
     fi
 else
-    echo "combined file: $combined"
+    log "combined file: $combined"
 fi
 
 log "Done"

@@ -1,0 +1,103 @@
+# Last Modified: Tue Feb 23 09:54:32 2016
+#include <tunables/global>
+
+profile apktool flags=(attach_disconnected,mediate_deleted,complain) {
+  /bin/bash r,
+  /dev/null w,
+  /dev/tty rw,
+  /etc/alternatives/java cx -> bin_java,
+  /etc/ld.so.cache r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+  /lib/x86_64-linux-gnu/ld-*.so r,
+  /lib/x86_64-linux-gnu/lib*.so mr,
+  /lib/x86_64-linux-gnu/lib*.so.* mr,
+  /proc/meminfo r,
+  /usr/bin/apktool r,
+  /usr/bin/basename rix,
+  /usr/bin/dirname ix,
+  /usr/bin/expr rix,
+  /usr/bin/java cx -> bin_java,
+  /usr/lib/jvm/java-7-openjdk-amd64/bin/java cx -> bin_java,
+  /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java cx -> bin_java,
+  /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/amd64/ r,
+  /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/amd64/*/ r,
+  /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/amd64/jli/* r,
+  /usr/lib/locale/** r,
+  /usr/lib/x86_64-linux-gnu/gconv/* r,
+  /usr/share/java cx -> bin_java,
+  /var/lib/dpkg/alternatives/java cx -> bin_java,
+
+
+  profile bin_java flags=(attach_disconnected,mediate_deleted,complain) {
+    /dev/random r,
+    /dev/urandom r,
+    /etc/java-7-openjdk/* r,
+    /etc/java-7-openjdk/security/* r,
+    /etc/ld.so.cache r,
+    /etc/localtime r,
+    /etc/nsswitch.conf r,
+    /etc/passwd r,
+    /lib/x86_64-linux-gnu/* mr,
+    /proc/*/ r,
+    /proc/*/maps r,
+    /proc/filesystems r,
+    /proc/meminfo r,
+    /proc/sys/** r,
+    /sys/devices/system/cpu/ r,
+    /sys/devices/system/cpu/online r,
+    /tmp/*/ r,
+    /tmp/*/* rw,
+    /usr/bin/apktool.jar r,
+    /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java r,
+    /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/** mr,
+    /usr/lib/locale/** r,
+    /usr/lib/x86_64-linux-gnu/* mr,
+    /usr/lib/x86_64-linux-gnu/gconv/* r,
+    /usr/lib/x86_64-linux-gnu/jni/** r,
+    /usr/share/java/* r,
+    /var/data/ r,
+    /var/data/** rw,
+
+  }
+}
+profile apktool_run_sh flags=(attach_disconnected,mediate_deleted,complain) {
+  /bin/bash r,
+  /bin/mv ix,
+  /dev/tty rw,
+  /engine/run.sh r,
+  /etc/ld.so.cache r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+  /lib/x86_64-linux-gnu/* mr,
+  /proc/filesystems r,
+  /proc/meminfo r,
+  /usr/bin/apktool px -> apktool,
+  /usr/bin/zip rcx -> bin_zip,
+  /usr/lib/locale/** r,
+  /usr/lib/x86_64-linux-gnu/gconv/* r,
+  /var/data/* rw,
+
+
+  profile bin_zip flags=(attach_disconnected,mediate_deleted,complain) {
+    /etc/ld.so.cache r,
+    /etc/localtime r,
+    /lib/x86_64-linux-gnu/* mr,
+    /proc/meminfo r,
+    /usr/bin/zip r,
+    /var/data/** rw,
+
+  }
+}
+profile menagerie.apktool flags=(attach_disconnected,mediate_deleted,complain) {
+  #include <abstractions/menagerie.container>
+
+  /dev/tty rw,
+  /engine/run.sh px -> apktool_run_sh,
+  /lib/x86_64-linux-gnu/lib*.so mr,
+  /lib/x86_64-linux-gnu/lib*.so.* mr,
+  /proc/meminfo r,
+  /usr/lib/locale/** r,
+  /usr/lib/x86_64-linux-gnu/gconv/* r,
+
+}

@@ -20,8 +20,8 @@ $ vagrant up
 
 * Launches the entire system, with a sample engine wrapping
   [apktool](http://ibotpeaches.github.io/Apktool/)
-* We used CentOS 6.6 to be as close as possible to an AMI environment - you can
-  adapt it to your env
+* We are using ubuntu 14.04 box and docker 1.10 - you can adapt it to your env
+  but keep in mind at least docker 1.10 is expected, for features we are using
 * It is recommended to install the
   [vagrant-vbguest](https://github.com/dotless-de/vagrant-vbguest) plugin - this
 will align the guest additions in the imported box
@@ -77,16 +77,22 @@ Once the engine is built and pushed to the private registry, you need to:
 config](../../blob/master/environments/generic-ami/confs/engines.json)):
 
 ```
-  - name:           # engine queue name
-    workers:        # how many workers listening 
-    image:          # regserver:port/new-engine-name:tag
-    cmd:            # engine activation command inside the container
-    mountpoint:     # where the engine expects the input
-    sizelimit:      # limit on upload size, bytes
-    inputfilename:  # the script should expect a single file as input, by this name
-    user:           # UID to execute
-    runflags:       # additional run flag string, embedded as-is into 'docker run' cmd
-    timeout:        # on job execution
+{"engines": [
+  { "name": "apktool",                        # engine queue name
+    "workers": 2,                             # how many workers listening
+    "image": "{{regserver}}/apktool:stable",  # regserver:port/new-engine-name:tag
+    "runflags": [                             # additional run flag strings, concatenated with spaces to cmd
+      "--security-opt",
+      "apparmor:menagerie.apktool"
+    ],
+    "cmd": "/engine/run.sh",                  # entry point
+    "mountpoint": "/var/data",                # where the engine expects the input (is ephemeral docker volume)
+    "sizelimit": 50000000,                    # limit on upload size, bytes
+    "inputfilename": "sample.apk",            # the script should expect a single file as input, by this name
+    "user": {{uid}},                          # templated, using the UID provided to install. can be HC
+    "timeout": 240                            # seconds on engine run
+  }
+]}
 ```
 
 * Pull the engine container in the deployed machine
@@ -106,9 +112,8 @@ to restart services).
 ### Configuration
 The menagerie container is launched twice as part of normal operation - once as
 the frontend server and once as the workers controller. For each of the
-two instances we have the same two config files, located under
-`/data/menagerie/volumes/[menage/frontend]/confs` (see also [volumes
-section](volumes)).
+two instances we push the same two config files into the container, located under
+`/data/confs` (see also [volumes section](volumes)).
 
 For engine configuration - see the [engines](#adding-engines) section above.
 
@@ -116,8 +121,9 @@ The second file is global configuration file
 ([default.json](../../blob/master/environments/generic-ami/confs/default.json)
 that contains location of intenal services, credentials, and misc directories.
 
-Cleanup configuration (for file system) is located under `/data/menagerie/scripts/cleanup.sh` -
-edit this file if you need to increase/reduce cleanup times. This script is launched every minute.
+Cleanup script (for volumes) is located inside the menagerie containers under `/usr/local/menagerie/scripts/cleanup.sh` -
+edit this file if you need to increase/reduce the period files are kept. This script is launched periodically via an
+external cron task see `/etc/cron.d/menagerie-cron`
 
 ### Deployment
 It is recommended to read the
@@ -131,46 +137,61 @@ a separate machine and pushed to the Docker registry (we use Jenkins, feel free
 to use your fancy).
 
 #### Volumes
-In the heart of the system we have volumes that are mounted under `/var/data`
+We are using docker named volumes that are mounted under `/data`
 inside the core containers:
 ```
-$tree /data/menagerie/
-.
-├── scripts/
-└── volumes/
-    ├── frontend/
-    │   ├── keys/
-    │   │   ├── engines.json
-    │   │   └── frontend.json
-    │   ├── log/
-    │   ├── mule/
-    │   └── store/
-    │       ├── <<job-id>>/
-    │       │   ├── input
-    │       │   └── result
-    │       └── ...
-    ├── menage/
-    │   ├── jobs/
-    │   ├── keys/
-    │   │   ├── engines.json
-    │   │   └── menage.json
-    │   ├── log/
-    │   ├── mule/
-    │   ├── menagerie-compose.yml
-    │   └── log.sh
-    ├── mysql/...
-    ├── rabbitmq/...
-    └── registry/...
+vagrant@vagrant-ubuntu-trusty-64:~$ docker volume ls
+DRIVER              VOLUME NAME
+local               menagerie_menage
+local               menagerie_mysql
+local               menagerie_rabbitmq
+local               mngreg_registry_conf
+local               mngreg_registry_data
+local               menagerie_frontend
 ```
 
+Structure inside the frontend volume:
+```
+frontend_1$ tree /data/
+.
+└── data/
+    ├── keys/
+    │   ├── engines.json
+    │   └── frontend.json
+    ├── log/
+    ├── mule/
+    └── store/
+       ├── <<job-id>>/
+       │   ├── input
+       │   └── result
+       └── ...
+```
+
+Structure inside the backend/menage volume:
+```
+menage_1$ tree /data/
+.
+└── data/
+    ├── keys/
+    │   ├── engines.json
+    │   └── frontend.json
+    ├── log/
+    ├── mule/
+    └── jobs/
+       ├── <<running/failed job-id>>/
+       └── ...
+```
+
+Docker volumes are supported from version 1.9, and allows to persist data in Dockerland. These volumes can also be
+remoted later on when using swarm or other scaling solutions.
 
 #### Services
 The containers are launched by Docker compose, monitored by upstart. The upstart
 scripts are located under `/etc/init/` and are all named `menagerie*.conf`
 
 #### Logs
-See above log directories. The utility `.../volumes/menage/log.sh` combines
-multiple log files into a linear time sorted view.
+all logs can be viewed using the `docker logs <container-name>` command. The maintainance logs that are launched via cron
+are tagged with container name and can be viewed in `/var/log/syslog`
 
 ---
 
@@ -185,27 +206,15 @@ test and remediated relevant comments (not all are relevant on
 a developer/vagrant box). Note that it is highly recommended to run
 this on your production deployment.
 
-The `frontend` services is running as a container under a user account UID
-(configurable see `install.sh`, we use `vagrant` in the vagrant installation).
-This is the only service that is exposed to the outside, and so in production
-the actual user should be with minimal privillages. We also recommend to place
-an nginx server in front of the API, and enfoce client side certificates to
-limit access even more.
+We running docker with the user namespace mapping (`DOCKER_OPTS="--userns-remap=default"`, see `Vagrantfile`), 
+a new feature in 1.10. This means that although internally the containers are running as root user, the UID is actually
+that of a less privillaged user on the host. The engines are also confined with timeout, and we highly recomment to add additional 
+run flags to limit them via the JSON file described above.
 
-The `menage` service is running as a container under the root UID. Reason for
-not using a lesser privilage is the need for this container to access the Docker
-socket and launch additional (engine) containers. The only extrenal input comes
-from the message queue, so it has a minimal surface area for exploits.
+Since we are using Docker volumes, there is no mapping of host disk into the containers.
 
-The engines themselves run under a limited user UID (configurable, `vagrant` in
-the demo system). Each engine has a very limited view of the file system (we only mount
-`.../volumes/menage/jobs/job_id`) and is limited in execution time. After each
-run the container is destroyed, keeping only the result file. 
-
-We are now working on porting to Docker 1.10. This will enable us to use
-the new user-namespaces feature thus reducing concerns on running as root inside
-containers. There are several other security improvements that will come with
-this release.
+Finally, we implemented apparmor profiles for the `menage`/`frontend` containers, and provide a [hands on wiki](../../wikis/engine_apparmor_setup) for adding apparmor profile
+to your custom engines. Profiles are defined in `complain` mode.
 
 ### Scalability
 ![alt text](../../raw/master/docs/images/distribute.png "Distributed architecture diagram")

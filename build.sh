@@ -74,7 +74,7 @@ go install ./src/cmd/...
 # pack and send container
 if [ $reg_server ]; then
   docker build -t $reg_server/menagerie .
-  docker tag -f $reg_server/menagerie $reg_server/menagerie:$latest_tag
+  docker tag $reg_server/menagerie $reg_server/menagerie:$latest_tag
   docker push $reg_server/menagerie:$latest_tag
 fi
 

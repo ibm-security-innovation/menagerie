@@ -28,11 +28,9 @@ stop menagerie_reg
 # create directories
 mkdir -p $volumedir/auth
 mkdir -p $volumedir/certs
-mkdir -p $volumedir/data
-chmod -R 700 $volumedir # make sure all is hidden
 
 # copy files and move to location
-cp ./registry-compose.yml $volumedir
+cp ./registry-compose.yml $targetdir
 cp ./menagerie_reg.conf /etc/init/
 
 if [ $firsttime ]; then
@@ -44,9 +42,12 @@ if [ $firsttime ]; then
   echo first time, creating cred and cert files
   echo `date | md5sum | head -c 16` > $volumedir/auth/cred && sleep 1 && echo `date | md5sum | head -c 32` >> $volumedir/auth/cred
   pushd $volumedir
-  $docker run --entrypoint=/usr/bin/htpasswd registry:2 -Bbn `head -1 auth/cred` `tail -1 auth/cred` >> auth/htpasswd
+  $docker run --rm --entrypoint=/usr/bin/htpasswd registry:2 -Bbn `head -1 auth/cred` `tail -1 auth/cred` >> auth/htpasswd
   popd
 fi
 
-$docker_compose -f $volumedir/registry-compose.yml pull
+$docker_compose -f $targetdir/registry-compose.yml -p mngreg pull
+$docker network create mngreg_default
+$docker_compose -f $targetdir/registry-compose.yml -p mngreg create
+tar c -C $volumedir . | $docker run --rm -v mngreg_registry_conf:/data -i busybox tar x -C /data
 start menagerie_reg

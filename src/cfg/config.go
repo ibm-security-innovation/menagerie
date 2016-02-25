@@ -72,7 +72,7 @@ type Engine struct {
 	InputFileName string
 	Timeout       int
 	User          int
-	RunFlags      string
+	RunFlags      []string
 }
 
 func NewRabbitmqConn() (*amqp.Connection, error) {

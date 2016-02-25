@@ -31,7 +31,7 @@ import (
 	"time"
 )
 
-const host = "127.0.0.1:9007"
+const host = "127.0.0.1:8080"
 const baseUrl = "http://" + host + "/"
 
 func cmd(name string, args ...string) *exec.Cmd {

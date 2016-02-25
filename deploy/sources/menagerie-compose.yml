@@ -1,30 +1,47 @@
-frontend:
-  container_name: menagerie_frontend
-  # build: .
-  image: {{regserver}}/menagerie
-  command: ./bin/frontend -cfg /data/keys/frontend.json -engine-cfg /data/keys/engines.json
-  container_name: menagerie_frontend
-  user: "{{uid}}"
-  ports:
-   - "8080:8080"
-  volumes:
-   - /data/menagerie/volumes/frontend:/data
-  external_links:
-   - menagerie_mysql:menagerie_mysql
-   - menagerie_rabbitmq:menagerie_rabbitmq
-  read_only: true
-menage:
-  container_name: menagerie_menage
-  # build: .
-  image: {{regserver}}/menagerie
-  command: ./bin/menage -cfg /data/keys/menage.json -engine-cfg /data/keys/engines.json
-  container_name: menagerie_menage
-  volumes: 
-   - /var/run/docker.sock:/var/run/docker.sock
-   - {{home}}/.docker:/root/.docker
-   - /data/menagerie/volumes/menage:/data
-  links:
-   - frontend:menagerie_frontend
-  external_links:
-   - menagerie_rabbitmq:menagerie_rabbitmq
-  read_only: true
+version: "2"
+
+services:
+  frontend:
+    image: {{regserver}}/menagerie
+    command: ./bin/frontend -cfg /data/keys/frontend.json -engine-cfg /data/keys/engines.json
+    ports:
+     - "{{port}}:8080"
+    volumes:
+     - frontend:/data
+#   read_only: true --- not supported in docker 1.10 with userns enabled
+    security_opt:
+     - apparmor:menagerie-frontend
+  menage:
+    image: {{regserver}}/menagerie
+    command: ./bin/menage -cfg /data/keys/menage.json -engine-cfg /data/keys/engines.json
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - menage:/data
+#   read_only: true --- not supported in docker 1.10 with userns enabled
+    security_opt:
+     - apparmor:menagerie-menage
+  rabbitmq:
+    image: rabbitmq:3-management
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    environment:
+      HOSTNAME: "menagerie_rabbit"
+      RABBITMQ_NODENAME: "menagerie_rabbitmq@localhost"
+      RABBITMQ_DEFAULT_USER: "menagerie"
+      RABBITMQ_DEFAULT_PASS: "menagerie"
+  mysql:
+    image: mysql
+    mem_limit: 1g
+    environment:
+      MYSQL_ROOT_PASSWORD: menagerieroot
+      MYSQL_USER: menagerie
+      MYSQL_PASSWORD: menagerie
+      MYSQL_DATABASE: menagerie
+    volumes:
+     - mysql:/var/lib/mysql
+
+volumes:
+  frontend:
+  menage:
+  rabbitmq:
+  mysql:

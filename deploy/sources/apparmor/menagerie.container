@@ -1,0 +1,12 @@
+# very lean profile permission for docker container
+
+  signal (receive) peer=unconfined,
+  signal peer=@{profile_name},
+  signal (receive, send) set=("exists"),
+
+  ptrace (trace,read) peer=docker-default,
+
+  /etc/ld.so.cache r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+

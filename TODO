@@ -1,0 +1,5 @@
+restore uid's for engines
+restore uid's for containers
+configuration volumes
+reap child zombies
+remove bind mount of docker socket and replace with tcp socket

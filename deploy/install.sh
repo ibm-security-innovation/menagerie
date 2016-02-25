@@ -17,6 +17,7 @@
 
 reg_server=localhost:5000
 deploy_env=generic-ami
+port=80
 mule_server=
 
 # process command line arguments before all
@@ -43,6 +44,10 @@ case $i in
     user="${i#*=}"
     shift # past argument=value
     ;;
+    -p=*|--port=*)
+    port="${i#*=}"
+    shift # past argument=value
+    ;;
     -h|--help)
     helpmsg=TRUE
     shift # past argument with no value
@@ -67,6 +72,7 @@ echo "restart_shared = ${restart_shared}"
 echo "reg_server     = ${reg_server}"
 echo "mule_server    = ${mule_server}"
 echo "user           = ${user}"
+echo "port           = ${port}"
 
 uid=`id -u $user`
 targetdir=/data/menagerie
@@ -77,6 +83,9 @@ if [ ! -e /var/opt/menagerie ]; then
   ln -s $targetdir /var/opt/menagerie
 fi
 
+mkdir -m 700 -p $volumedir
+chmod 700 $volumedir
+
 # stop previous
 stop menagerie
 if [ $restart_shared ]; then
@@ -85,7 +94,6 @@ if [ $restart_shared ]; then
   stop menagerie_db
   stop menagerie_mq
 fi
-
 
 # create volumes
 function create_volume() {
@@ -104,8 +112,6 @@ function template() {
   sed -i "s|{{$name}}|$val|g" $file # NOTE this fails if $val contains '|'
 }
 
-mkdir -p $targetdir/scripts
-mkdir -p $volumedir/mysql
 mkdir -p $volumedir/rabbitmq
 create_volume frontend
 mkdir -p $volumedir/frontend/store
@@ -113,57 +119,57 @@ create_volume menage
 
 # copy files and move to location
 # > docker-compose.yaml,menagerie.conf come from RPM
-cp ./sources/menagerie-compose.yml $volumedir/menage
-cp ./sources/db-compose.yml $volumedir/mysql
-cp ./sources/mq-compose.yml $volumedir/rabbitmq
-cp ./sources/cleanup.sh $targetdir/scripts
-cp ./sources/job_mule_add.sh $targetdir/scripts
+cp ./sources/menagerie-compose.yml $targetdir
 cp ../environments/$deploy_env/confs/default.json $volumedir/frontend/keys/frontend.json
 cp ../environments/$deploy_env/confs/engines.json $volumedir/frontend/keys/engines.json
 cp ../environments/$deploy_env/confs/default.json $volumedir/menage/keys/menage.json
 cp ../environments/$deploy_env/confs/engines.json $volumedir/menage/keys/engines.json
-cp ./sources/log.sh $volumedir/menage/
-cp -R ./sources/sql $volumedir/mysql/
 cp ./sources/menagerie.conf /etc/init/
 cp ./sources/menagerie_db.conf /etc/init/
 cp ./sources/menagerie_mq.conf /etc/init/
 cp ./sources/menagerie.logrotate /etc/logrotate.d/
-cp ./sources/menagerie.crontab /etc/cron.d/
+cp ./sources/menagerie-cron /etc/cron.d/
+
+if [ -d /etc/apparmor.d ]; then 
+cp ./sources/apparmor/menagerie.frontend /etc/apparmor.d/
+cp ./sources/apparmor/menagerie.menage /etc/apparmor.d/
+cp ./sources/apparmor/menagerie.container /etc/apparmor.d/abstractions/
+/etc/init.d/apparmor teardown
+/etc/init.d/apparmor reload
+fi
 
 # run parameters through template files
 if [ $mule_server ]; then
   mule_cmd="-u $mule_server"
 fi
-template /etc/cron.d/menagerie.crontab 'muleserver' $mule_cmd
-template $volumedir/menage/menagerie-compose.yml 'home' $HOME
-template $volumedir/menage/menagerie-compose.yml 'regserver' $reg_server
-template $volumedir/menage/menagerie-compose.yml 'uid' $uid
+template /etc/cron.d/menagerie-cron 'mulecmd' $mule_cmd
+template /etc/cron.d/menagerie-cron 'docker' $docker
+template $targetdir/menagerie-compose.yml 'regserver' $reg_server
+template $targetdir/menagerie-compose.yml 'uid' $uid
+template $targetdir/menagerie-compose.yml 'port' $port
 template $volumedir/menage/keys/engines.json 'regserver' $reg_server
 template $volumedir/menage/keys/engines.json 'uid' $uid
 template $volumedir/frontend/keys/engines.json 'regserver' $reg_server
 template $volumedir/frontend/keys/engines.json 'uid' $uid
 
-# change ownership for frontend and engine volumes
-chown -R $user:$user $volumedir/frontend
-chmod -R g+s $volumedir/frontend
-
-# hide the rest
-chmod -R 700 $volumedir/menage
-chmod -R 700 $volumedir/mysql
-chmod -R 700 $volumedir/rabbitmq
-chmod -R 700 $targetdir/scripts
+# create default network if not exist, work around dup network creation bug
+$docker network ls |grep menagerie_default
+stat="$?"
+if [ $stat -ne "0" ]; then
+  $docker network create menagerie_default
+fi
 
 # start shared if requested
 if [ $restart_shared ]; then
-  $docker_compose -f $volumedir/mysql/db-compose.yml pull
-  $docker_compose -f $volumedir/rabbitmq/mq-compose.yml pull
+  $docker_compose -f $targetdir/menagerie-compose.yml pull mysql
+  $docker_compose -f $targetdir/menagerie-compose.yml pull rabbitmq
   start menagerie_db
   timer="1"
   stat="1"
   while [ "$stat" -ne "0" ] && [ "$timer" -le "32" ]; do 
     sleep $timer
     timer=$[$timer+$timer]
-    $docker exec -i menagerie_mysql mysql -umenagerie -pmenagerie < ./sources/sql/schema.sql
+    $docker exec -i menagerie_mysql_1 mysql -umenagerie -pmenagerie < ./sources/sql/schema.sql
     stat="$?"
   done
   start menagerie_mq
@@ -171,5 +177,8 @@ if [ $restart_shared ]; then
 fi
 
 # start menagerie
-$docker_compose -f $volumedir/menage/menagerie-compose.yml pull
+$docker_compose -f $targetdir/menagerie-compose.yml -p menagerie pull frontend menage
+$docker_compose -f $targetdir/menagerie-compose.yml -p menagerie create frontend menage
+tar c -C $volumedir/frontend . | $docker run --rm -v menagerie_frontend:/data -i busybox tar x -C /data
+tar c -C $volumedir/menage . | $docker run --rm -v menagerie_menage:/data -i busybox tar x -C /data
 start menagerie

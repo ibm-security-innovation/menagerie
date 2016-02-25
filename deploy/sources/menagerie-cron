@@ -1,0 +1,4 @@
+*/5 * * * * root {{docker}} exec menagerie_menage_1   /usr/local/menagerie/scripts/job_mule_add.sh {{mulecmd}} 2>&1 |/usr/bin/logger -t menage_1-mule
+0   * * * * root {{docker}} exec menagerie_menage_1   /usr/local/menagerie/scripts/cleanup.sh                  2>&1 |/usr/bin/logger -t menage_1-cleanup
+*/5 * * * * root {{docker}} exec menagerie_frontend_1 /usr/local/menagerie/scripts/job_mule_add.sh {{mulecmd}} 2>&1 |/usr/bin/logger -t frontend_1-mule
+0   * * * * root {{docker}} exec menagerie_frontend_1 /usr/local/menagerie/scripts/cleanup.sh                  2>&1 |/usr/bin/logger -t frontend_1-cleanup

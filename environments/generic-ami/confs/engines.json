@@ -2,7 +2,10 @@
   { "name": "apktool",
     "workers": 2,
     "image": "{{regserver}}/apktool:stable",
-    "runflags": "--read-only",
+    "runflags": [
+      "--security-opt",
+      "apparmor:menagerie.apktool"
+    ],
     "cmd": "/engine/run.sh",
     "mountpoint": "/var/data",
     "sizelimit": 50000000,
