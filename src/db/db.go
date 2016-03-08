@@ -64,8 +64,8 @@ func dbExec(q string, args ...interface{}) (sql.Result, error) {
 	return res, err
 }
 
-func JobCreate(engine string) (jid int64, err error) {
-	res, err := dbExec("INSERT INTO jobs SET status='RECEIVED', engine=?, created=NOW()", engine)
+func JobCreate(engine string,filename string) (jid int64, err error) {
+	res, err := dbExec("INSERT INTO jobs SET status='RECEIVED', engine=?, created=NOW(),filename=?", engine,filename)
 	if err != nil {
 		return -1, err
 	}

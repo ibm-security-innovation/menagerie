@@ -25,8 +25,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/golang/glog"
+	"github.com/streadway/amqp"
 	"io"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,9 +37,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/golang/glog"
-	"github.com/streadway/amqp"
 )
 
 var (
@@ -103,15 +103,20 @@ type UploadRensponse struct {
 
 func (s *queueServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	defer logPanic()
-
-	jid, err := db.JobCreate(s.Name)
+	file, header, err := r.FormFile("upload")
+	if err != nil {
+		glog.Errorln("Couldn't create job", err)
+		error500(w)
+		return
+	}
+	jid, err := db.JobCreate(s.Name, header.Filename)
 	if err != nil {
 		glog.Errorln("Couldn't create job", err)
 		error500(w)
 		return
 	}
 
-	if err = s.doUpload(w, r, jid); err != nil {
+	if err = s.doUpload(w, file, jid, header.Filename); err != nil {
 		if err = db.JobSetError(jid, "Error starting job"); err != nil {
 			glog.Errorf("Error setting job %d error: %s", jid, err)
 		}
@@ -124,7 +129,13 @@ func (s *queueServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO gc old files
-func (s *queueServer) doUpload(w http.ResponseWriter, r *http.Request, jid int64) error {
+type QueueEntry struct {
+	JobId    string `json:"jobid"`
+	Filename string `json:"filename"`
+}
+
+func (s *queueServer) doUpload(w http.ResponseWriter, file multipart.File, jid int64, filename string) error {
+
 	conn, err := cfg.NewRabbitmqConn()
 	if err != nil {
 		glog.Errorln("Couldn't connect to rabbitmq", err)
@@ -152,9 +163,10 @@ func (s *queueServer) doUpload(w http.ResponseWriter, r *http.Request, jid int64
 
 	h := sha1.New()
 	limit := int64(s.SizeLimit)
-	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(r.Body, limit))
+	glog.Infoln("job file name ", filename)
+	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(file, limit))
 	if n == limit {
-		glog.Errorln("Error body too long", err)
+		glog.Errorln("Error body too long", filename, err)
 		http.Error(w, "Request body too long", http.StatusBadRequest)
 		os.Remove(fpath)
 		return errors.New("Error body too long")
@@ -171,7 +183,7 @@ func (s *queueServer) doUpload(w http.ResponseWriter, r *http.Request, jid int64
 		return err
 	}
 
-	glog.Infoln("job file", s.Name, "wrote bytes", n)
+	glog.Infoln("job file", s.Name, filename, "wrote bytes", n)
 	hash := hex.EncodeToString(h.Sum(nil))
 	glog.Infoln("Wrote job with hash", hash, "to file", fpath)
 	// TODO check if hash is already queued and if it is abort and return the job id
@@ -190,6 +202,15 @@ func (s *queueServer) doUpload(w http.ResponseWriter, r *http.Request, jid int64
 		error500(w)
 		return err
 	}
+
+	qe := QueueEntry{JobId: fmt.Sprint(jid), Filename: filename}
+	qem, err := json.Marshal(qe)
+	glog.Infoln("job file name ", filename)
+	if err != nil {
+		glog.Errorln("could not marshal queue entry to json", err)
+		error500(w)
+		return err
+	}
 	err = ch.Publish(
 		"",     // exchange
 		q.Name, // routing key
@@ -197,8 +218,8 @@ func (s *queueServer) doUpload(w http.ResponseWriter, r *http.Request, jid int64
 		false,
 		amqp.Publishing{
 			DeliveryMode: amqp.Persistent,
-			ContentType:  "text/plain",
-			Body:         []byte(fmt.Sprint(jid)),
+			ContentType:  "application/json",
+			Body:         qem,
 		})
 	if err != nil {
 		glog.Errorln("Error storing job for file", fpath, "with hash", hash, "to rabbitmq")

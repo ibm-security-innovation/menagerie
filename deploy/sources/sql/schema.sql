@@ -4,10 +4,11 @@ USE menagerie;
 
 -- CREATE USER 'menagerie'@'%' IDENTIFIED BY 'menagerie';
 -- GRANT ALL PRIVILEGES ON *.* TO 'menagerie'@'%' WITH GRANT OPTION;
-
+DROP TABLE IF EXISTS jobs;
 CREATE TABLE IF NOT EXISTS jobs (
     id INT NOT NULL AUTO_INCREMENT,
     engine VARCHAR(32) NOT NULL,
+    filename VARCHAR(512) NULL,
     status ENUM ('RECEIVED', 'RUNNING', 'FAIL', 'SUCCESS') NOT NULL DEFAULT 'RECEIVED',
     created DATETIME NULL,
     started DATETIME NULL,

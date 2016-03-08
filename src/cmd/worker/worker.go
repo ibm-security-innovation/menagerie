@@ -16,17 +16,17 @@
 package main
 
 import (
+	"cfg"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"stats"
 	"strings"
 	"time"
-
-	"cfg"
-	"stats"
 
 	"github.com/golang/glog"
 	"github.com/streadway/amqp"
@@ -110,35 +110,44 @@ func main() {
 	ch.Cancel(consumer, true)
 }
 
-func work(d amqp.Delivery) {
-	job := string(d.Body)
-	glog.Infoln("worker:work on job", job)
-	if err := handleJob(job, d); err != nil {
-		jobError(job, err.Error())
-	}
-	d.Ack(false) // we acknowledge whether the job succeeded or not - as we do not want it to stay in the queue
+type QueueEntry struct {
+	JobId    string `json:"jobid"`
+	Filename string `json:"filename"`
 }
 
-func handleJob(job string, d amqp.Delivery) error {
+func work(d amqp.Delivery) {
+	defer d.Ack(false) // we acknowledge whether the job succeeded or not - as we do not want it to stay in the queue
+	qe := QueueEntry{}
+	if err := json.Unmarshal(d.Body, &qe); err != nil {
+		glog.Errorln("worker:work could not unmarshal josn form queue")
+		return
+	}
+	glog.Infoln("worker:work on job", qe.JobId, qe.Filename)
+	if err := handleJob(qe.JobId, qe.Filename); err != nil {
+		jobError(qe.JobId, err.Error())
+	}
+}
+
+func handleJob(job string, filename string) error {
 	stats.Inc(*engineType + ".job_started")
-	stats.Inc("job_completion.started." + *engineType )
-	path, err := engine.OpenNewTask()
+	stats.Inc("job_completion.started." + *engineType)
+	path, err := engine.OpenNewTask(job)
 	if err != nil {
-		glog.Errorln("Error opening task", err)
+		glog.Errorln("Error opening task", job, filename, err)
 		return errors.New("Error creating job")
 	}
 	defer engine.Cleanup()
 
 	f, err := os.Create(path)
 	if err != nil {
-		glog.Errorln("Error creating file", err)
+		glog.Errorln("Error creating file", job, filename, err)
 		return errors.New("Error creating job file")
 	}
 	defer f.Close()
 
 	frontend := cfg.Frontend
 	jobUrl := fmt.Sprintf("http://%s/files/%s/input", frontend, job)
-	glog.Infoln("Getting job id", job, "from", jobUrl)
+	glog.Infoln("Getting job id", job, filename, "from", jobUrl)
 	res, err := http.Get(jobUrl)
 	if err != nil {
 		glog.Errorln("Error getting", jobUrl, err)
@@ -171,33 +180,33 @@ func handleJob(job string, d amqp.Delivery) error {
 		case <-done:
 			if resultError != nil {
 				glog.Errorln("Error running job", resultError)
-			        stats.Inc("job_completion.error.running."+ *engineType)
-			        stats.Inc(*engineType + ".error.running")
+				stats.Inc("job_completion.error.running." + *engineType)
+				stats.Inc(*engineType + ".error.running")
 				return errors.New("Error running job")
 			}
-			glog.Infoln("Got result for job", job)
+			glog.Infoln("Got result for job", job, filename)
 			result, err := os.Open(resultFile)
 			if err != nil {
 				glog.Errorln("Error opening result file", err)
-			        stats.Inc("job_completion.error.result_processing."+ *engineType)
-			        stats.Inc(*engineType + ".error.result_processing")
+				stats.Inc("job_completion.error.result_processing." + *engineType)
+				stats.Inc(*engineType + ".error.result_processing")
 				return errors.New("Error processing result")
 			}
 			put, _ := http.NewRequest("PUT", fmt.Sprintf("http://%s/result/%s", frontend, job), result)
 			_, err = http.DefaultClient.Do(put)
 			if err != nil {
 				glog.Errorln("Error sending results", err)
-			        stats.Inc("job_completion.error.send_result."+ *engineType)
-			        stats.Inc(*engineType + ".error.send_result")
+				stats.Inc("job_completion.error.send_result." + *engineType)
+				stats.Inc(*engineType + ".error.send_result")
 				return errors.New("Error processing result")
 			}
 			glog.Infoln("Result sent to server for job", job)
 			stats.Inc(*engineType + ".job_success")
-			stats.Inc("job_completion.success."+ *engineType)
+			stats.Inc("job_completion.success." + *engineType)
 			return nil
 		case <-timerc:
 			stats.Inc(*engineType + ".job_timeout")
-			stats.Inc("job_completion.timeout." +*engineType)
+			stats.Inc("job_completion.timeout." + *engineType)
 			glog.Errorln("Job", job, "timed out")
 			engine.Stop()
 			// TODO mark that we timed out

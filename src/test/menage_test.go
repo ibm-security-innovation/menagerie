@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -64,6 +65,7 @@ func checkResultResponse(body []byte, t *testing.T) (*ResultResponse, error) {
 	var data ResultResponse
 	err := json.Unmarshal(body, &data)
 	if err != nil {
+		t.Error(bytes.NewBuffer(body).String())
 		t.Error("unmarshaling upload response")
 		t.Error(err)
 		switch v := err.(type) {
@@ -160,7 +162,22 @@ func TestMain(m *testing.M) {
 }
 
 func TestWorker(t *testing.T) {
-	req, _ := http.NewRequest("PUT", baseUrl+"testengine/upload", bytes.NewBufferString("foo"))
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("upload", "testfile.txt")
+	if err != nil {
+		t.Error("could not create from data")
+	}
+	_, err = part.Write(bytes.NewBufferString("foo").Bytes())
+	if err != nil {
+		t.Error("could not write for form buffer")
+	}
+	err = writer.Close()
+	if err != nil {
+		t.Error(" could not close form writer")
+	}
+	req, _ := http.NewRequest("PUT", baseUrl+"testengine/upload", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	id := callAndExtractJobId(req, t)
 

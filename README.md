@@ -28,7 +28,7 @@ will align the guest additions in the imported box
 
 Once the system is up and running it can be used as follows (from outside the
 Vagrant box):
-* Submit job to queue via `curl -v -XPUT http://localhost:8100/apktool/upload --data-binary @<path-to-sample-apk>`. The response is a `job-id` number
+* Submit job to queue via `curl -v -XPUT http://localhost:8100/apktool/upload -F "upload=@<path-to-sample-apk>"`. The response is a `job-id` number
 * Get response via `curl -v http://localhost:8100/result/<job-id>`
 * Console and result viewer via [menagerie
   console](http://localhost:8100/console)
@@ -213,7 +213,7 @@ run flags to limit them via the JSON file described above.
 
 Since we are using Docker volumes, there is no mapping of host disk into the containers.
 
-Finally, we implemented apparmor profiles for the `menage`/`frontend` containers, and provide a [hands on wiki](../../wiki/Builiding-a-profile-for-engine-container-with-apparmor) for adding apparmor profile
+Finally, we implemented apparmor profiles for the `menage`/`frontend` containers, and provide a [hands on wiki](../../wikis/engine_apparmor_setup) for adding apparmor profile
 to your custom engines. Profiles are defined in `complain` mode.
 
 ### Scalability

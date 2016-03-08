@@ -69,12 +69,14 @@ func NewEngineContainerWrap(engineType string, index int) *EngineContainerWrap {
 	}
 }
 
-func (ecwrap *EngineContainerWrap) OpenNewTask() (string, error) {
-	name := ecwrap.engineId + "_" + strconv.Itoa(rand1.Intn(1000))
+func (ecwrap *EngineContainerWrap) OpenNewTask(job string) (string, error) {
+	name := ecwrap.engineId + "_" + job
 	ecwrap.jobc = JobContext{
 		containerName: name,
 		dirname:       path.Join(*jobsdir, name),
 	}
+
+        glog.Infoln("new task ", ecwrap.engineId, ecwrap.jobc.containerName, ecwrap.jobc.dirname)
 	// build container mount
 	if err := os.MkdirAll(ecwrap.jobc.dirname, 0700); err != nil {
 		glog.Infoln("could not create dir worker for engine", ecwrap.engineId, ecwrap.jobc.containerName, ecwrap.jobc.dirname)
