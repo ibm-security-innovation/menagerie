@@ -28,12 +28,28 @@ will align the guest additions in the imported box
 
 Once the system is up and running it can be used as follows (from outside the
 Vagrant box):
-* Submit job to queue via `curl -v -XPUT http://localhost:8100/apktool/upload -F "upload=@<path-to-sample-apk>"`. The response is a `job-id` number
+* Submit job to queue via `curl -v -XPOST http://localhost:8100/apktool/upload -F "upload=@<path-to-sample-apk>"`. The response is a `job-id` number
 * Get response via `curl -v http://localhost:8100/result/<job-id>`
 * Console and result viewer via [menagerie
   console](http://localhost:8100/console)
 * RabbitMQ monitoring via [RabbitMQ admin](http://localhost:15672). Use the
   credentials provided in `confs/default.json`, by default `menagerie|menagerie`
+
+----
+
+## API
+Menagerie supports the following HTTP calls:
+
+| Method | URL                    | Parameters    | Result (JSON) |
+| :----- |:----------------------:| :------------:|:-------------:|
+| POST   | `/<queue-name>/upload` | <ul><li>`upload` (MP): `filename` and body</li></ul>       |<ul><li>`jobid`: job tracking ID</li></ul>|
+| GET    | `/result/<id>`         | <ul><li>`<id>` (URL): `jobid` from `upload` call</li></ul> |<ul><li>`status`: [`Running`,`Success`,`Failed`]</li><li>`summary`: excerpt from result file</li><li>`link`: link to result file</li></ul>|
+| GET    | `/link/<id>`           | <ul><li>`<id>` (URL): `jobid` from `upload` call</li></ul> |Result file bytes|
+
+`curl` calls:
+* `curl -XPOST http://<server>:<port>/<queue-name>/upload -F "upload=@<path-to-file>"`
+* `curl -XGET  http://<server>:<port>/result/<jobid>`
+* `curl -XGET  http://<server>:<port>/link/<jobid>`
 
 ----
 
