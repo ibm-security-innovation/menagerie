@@ -42,9 +42,9 @@ Menagerie supports the following HTTP calls:
 
 | Method | URL                    | Parameters    | Result (JSON) |
 | :----- |:----------------------:| :------------:|:-------------:|
-| POST   | `/<queue-name>/upload` | <ul><li>`upload` (MP): `filename` and body</li></ul>       |<ul><li>`jobid`: job tracking ID</li></ul>|
-| GET    | `/result/<id>`         | <ul><li>`<id>` (URL): `jobid` from `upload` call</li></ul> |<ul><li>`status`: [`Running`,`Success`,`Failed`]</li><li>`summary`: excerpt from result file</li><li>`link`: link to result file</li></ul>|
-| GET    | `/link/<id>`           | <ul><li>`<id>` (URL): `jobid` from `upload` call</li></ul> |Result file bytes|
+| POST   | `/<queue-name>/upload` | `upload` (Multipart): `filename` and body|<ul><li>`jobid`: job tracking ID</li></ul>|
+| GET    | `/result/<id>`         | `<id>` (URL): `jobid` from `upload` call |<ul><li>`status`: [`Running`,`Success`,`Failed`]</li><li>`summary`: excerpt from result file</li><li>`link`: link to result file</li></ul>|
+| GET    | `/link/<id>`           | `<id>` (URL): `jobid` from `upload` call |Result file bytes|
 
 `curl` calls:
 * `curl -XPOST http://<server>:<port>/<queue-name>/upload -F "upload=@<path-to-file>"`
