@@ -28,7 +28,7 @@ will align the guest additions in the imported box
 
 Once the system is up and running it can be used as follows (from outside the
 Vagrant box):
-* Submit job to queue via `curl -v -XPOST http://localhost:8100/apktool/upload -F "upload=@<path-to-sample-apk>"`. The response is a `job-id` number
+* Submit job to engine via `curl -v -XPOST http://localhost:8100/apktool/upload -F "upload=@<path-to-sample-apk>"`. The response is a `job-id` number
 * Get response via `curl -v http://localhost:8100/result/<job-id>`
 * Console and result viewer via [menagerie
   console](http://localhost:8100/console)
@@ -42,12 +42,12 @@ Menagerie supports the following HTTP calls:
 
 | Method | URL                    | Parameters    | Result (JSON) |
 | :----- |:----------------------:| :------------:|:-------------:|
-| POST   | `/<queue-name>/upload` | `upload` (Multipart): `filename` and body|<ul><li>`jobid`: job tracking ID</li></ul>|
+| POST   | `/<engine-name>/upload` | `upload` (Multipart): `filename` and body|<ul><li>`jobid`: job tracking ID</li></ul>|
 | GET    | `/result/<id>`         | `<id>` (URL): `jobid` from `upload` call |<ul><li>`status`: [`Running`,`Success`,`Failed`]</li><li>`summary`: excerpt from result file</li><li>`link`: link to result file</li></ul>|
 | GET    | `/link/<id>`           | `<id>` (URL): `jobid` from `upload` call |Result file bytes|
 
 `curl` calls:
-* `curl -XPOST http://<server>:<port>/<queue-name>/upload -F "upload=@<path-to-file>"`
+* `curl -XPOST http://<server>:<port>/<engine-name>/upload -F "upload=@<path-to-file>"`
 * `curl -XGET  http://<server>:<port>/result/<jobid>`
 * `curl -XGET  http://<server>:<port>/link/<jobid>`
 
@@ -114,9 +114,9 @@ config](../../blob/master/environments/generic-ami/confs/engines.json)):
 * Pull the engine container in the deployed machine
 * `sudo stop menagerie && sudo start menagerie`
 
-You will see a new queue added to the [console](http://localhost:8100/console)
+You will see a new engine/queue added to the [console](http://localhost:8100/console)
 and [RabbitMQ admin](http://localhost:15672). Submitting jobs is the same as
-described in the [quick start](#quick-start), use the `queue-name` instead of
+described in the [quick start](#quick-start), use the `engine-name` instead of
 `apktool` in the `curl` request.
 
 When you build and push new versions of engine containers, follow the steps
