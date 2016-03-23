@@ -1,0 +1,5 @@
+{
+  "menagerie_base" : "http://<your-host-here>",
+  "pooling_interval": 400,
+  "pooling_attempts": 100
+}

@@ -267,15 +267,18 @@ func failed(e *fsm.Event) {
 }
 
 func (t *Client) readConfig(configFile string) {
+	if configFile == "" {
+		return
+	}
 	b, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "can't read config file.\n")
-		os.Exit(3)
+		return
 	}
 	err = json.Unmarshal(b, &t.cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "can't parse config file", err, "\n")
-		os.Exit(3)
+		return
 	}
 	t.cfg.PoolingInterval = t.cfg.PoolingInterval * time.Millisecond
 	if t.cfg.PoolingAttempts < 1 {
@@ -290,10 +293,10 @@ func (t *Client) doit(input []byte) Result {
 	return r
 }
 
-func NewClient(engine string, resultDest io.Writer) *Client {
+func NewClient(configFile string, engine string, resultDest io.Writer) *Client {
 	mngr := &Client{engine: engine, notify: make(chan Result)}
 	mngr.result.output = resultDest
-	mngr.readConfig("./client_config.json")
+	mngr.readConfig(configFile)
 	mngr.fsm = fsm.NewFSM(
 		"idle",
 		fsm.Events{

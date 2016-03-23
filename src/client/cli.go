@@ -11,13 +11,14 @@ import (
 
 func commandLine() {
 	// treat this as a command line invocation, so read the input from the command line
-	var request, response, engine string
+	var request, response, engine, config string
 	var help bool
 
 	flag.BoolVar(&help, "h", false, "help")
-	flag.StringVar(&request, "r", "", "request file (json)")
-	flag.StringVar(&response, "s", "", "response file (json)")
-	flag.StringVar(&engine, "e", "", "engine to use")
+	flag.StringVar(&request, "r", "", "Request file to upload (default: stdin)")
+	flag.StringVar(&response, "s", "", "Response file (default: stdout)")
+	flag.StringVar(&engine, "e", "", "Engine to use")
+	flag.StringVar(&config, "c", "client_config.json", "Config file to read (json)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: menagerie_cli [-v] [-r request file (json)] [-s response file (json)\n\tStandard input and output are used if the request/response are missing\n")
@@ -60,7 +61,7 @@ func commandLine() {
 	glog.V(0).Infoln("responseFile %#v", file)
 
 	// this event triggers it all
-	t := NewClient(engine, file)
+	t := NewClient(config, engine, file)
 	_ = t.doit(requestBody)
 }
 

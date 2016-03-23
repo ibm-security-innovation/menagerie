@@ -37,7 +37,7 @@ func setup(handlers [3]func(web.C, http.ResponseWriter, *http.Request)) *Client 
 	mux.Get("/result/:id", handlers[1])
 	mux.Get("/link/:id", handlers[2])
 
-	mngr := NewClient("engine", ioutil.Discard)
+	mngr := NewClient("", "engine", ioutil.Discard)
 	mngr.cfg.MenagerieBase = MenagerieBase
 	glog.V(0).Infoln("setup", server)
 	if server != nil {
