@@ -9,7 +9,7 @@ import (
 	"github.com/golang/glog"
 )
 
-func commandLine() {
+func main() {
 	// treat this as a command line invocation, so read the input from the command line
 	var request, response, engine, config string
 	var help bool
@@ -27,7 +27,7 @@ func commandLine() {
 	}
 	flag.Parse()
 
-	if help {
+	if help || len(os.Args) == 1 {
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -63,15 +63,5 @@ func commandLine() {
 	// this event triggers it all
 	t := NewClient(config, engine, file)
 	_ = t.doit(requestBody)
-}
-
-func main() {
-	args := os.Args[1:]
-	if len(args) == 0 {
-		flag.Usage()
-	} else {
-		commandLine()
-	}
-
 	os.Exit(0)
 }
