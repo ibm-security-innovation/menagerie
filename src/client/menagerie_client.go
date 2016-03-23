@@ -17,8 +17,8 @@ import (
 
 type Config struct {
 	MenagerieBase   string        `json:"menagerie_base"`
-	PoolingInterval time.Duration `json:"pooling_interval"`
-	PoolingAttempts int           `json:"pooling_attempts"`
+	PollingInterval time.Duration `json:"polling_interval"`
+	PollingAttempts int           `json:"polling_attempts"`
 }
 
 type UploadResult struct {
@@ -179,12 +179,12 @@ func (t *Client) CheckForResult() {
 		case "Success":
 			t.fsm.Event("download", t)
 		case "Running": // if the resposne is Running, issue a new 'poll_for_result'
-			t.cfg.PoolingAttempts--
-			if t.cfg.PoolingAttempts < 0 {
+			t.cfg.PollingAttempts--
+			if t.cfg.PollingAttempts < 0 {
 				glog.Error("CheckForResult - max amount of polling reached. Aborting")
 				t.fsm.Event("failed", t, "max amount of polling reached")
 			} else {
-				time.AfterFunc(t.cfg.PoolingInterval, func() {
+				time.AfterFunc(t.cfg.PollingInterval, func() {
 					t.fsm.Event("poll_for_result", t)
 				})
 			}
@@ -280,9 +280,9 @@ func (t *Client) readConfig(configFile string) {
 		fmt.Fprintf(os.Stderr, "can't parse config file", err, "\n")
 		return
 	}
-	t.cfg.PoolingInterval = t.cfg.PoolingInterval * time.Millisecond
-	if t.cfg.PoolingAttempts < 1 {
-		t.cfg.PoolingAttempts = 1
+	t.cfg.PollingInterval = t.cfg.PollingInterval * time.Millisecond
+	if t.cfg.PollingAttempts < 1 {
+		t.cfg.PollingAttempts = 1
 	}
 	glog.V(0).Infoln("readConfig", t.cfg)
 }

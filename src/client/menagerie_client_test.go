@@ -173,7 +173,7 @@ func TestTooManyRetries(t *testing.T) {
 	}
 
 	mngr := setup([3]func(web.C, http.ResponseWriter, *http.Request){uploadHandler, resultHandler, linkHandler})
-	mngr.cfg.PoolingAttempts = 2
+	mngr.cfg.PollingAttempts = 2
 	mngr.doit([]byte("{ \"chano\": \"pozo\"}"))
 
 	time.Sleep(time.Second * 3) // this is kludgy but easy
@@ -204,7 +204,7 @@ func TestFailedJob(t *testing.T) {
 	}
 
 	mngr := setup([3]func(web.C, http.ResponseWriter, *http.Request){uploadHandler, resultHandler, linkHandler})
-	mngr.cfg.PoolingAttempts = 8
+	mngr.cfg.PollingAttempts = 8
 	mngr.doit([]byte("{ \"chano\": \"pozo\"}"))
 
 	time.Sleep(time.Second * 3) // this is kludgy but easy
