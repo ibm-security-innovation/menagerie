@@ -276,7 +276,6 @@ This project is licensed under the Apache License 2.0.  See the
 * [bootstrap-material-design](https://github.com/FezVrasta/bootstrap-material-design): MIT license
 * [jsrender](https://github.com/BorisMoore/jsrender/blob/master/MIT-LICENSE.txt): MIT license
 * [twbs-pagination](https://github.com/esimakin/twbs-pagination/blob/develop/LICENSE): Apache 2.0 license
-* [looplab/fsm](https://github.com/looplab/fsm): Apache 2.0 license
 * [zenazn/goji](https://github.com/zenazn/goji): MIT license
 
 Project icon from [iconka](http://iconka.com/en/downloads/cat-power/), under [free license](http://iconka.com/en/licensing/)
